@@ -10,17 +10,22 @@ import util.enemy.*;
 import util.common.Util;
 
 import robocode.AdvancedRobot;
+import robocode.BulletHitEvent;
 import robocode.HitByBulletEvent;
+import robocode.HitRobotEvent;
 import robocode.ScannedRobotEvent;
 
 public class MyBot extends AdvancedRobot implements Bot {
 	private ArrayList<Integer> surfDirections;
 	private ArrayList<java.lang.Double> surfAbsBearings;
 	private Point2D.Double myLocation;
+	private double directAngle = 0;
+	private int direction = 0;
+	private Wave mw = null;
+	private boolean isToSurf = true;
 
-	private Enemy enemy = null;
+	private EnemyImpl enemy = null;
 
-	public static Rectangle2D.Double _fieldRect = new java.awt.geom.Rectangle2D.Double(18, 18, 764, 564);
 	public static double WALL_STICK = 160;
 
 	public void run() {
@@ -30,11 +35,17 @@ public class MyBot extends AdvancedRobot implements Bot {
 		setAdjustRadarForGunTurn(true);
 
 		do {
+			directAngle = getHeadingRadians() + Math.PI;
+			double myLateralVelocity = (getVelocity() * Math.sin(getHeadingRadians()));
+			direction = myLateralVelocity > 0 ? 1 : -1;
 			turnRadarRightRadians(java.lang.Double.POSITIVE_INFINITY);
+			ahead(100);
+
 		} while (true);
 	}
 
 	public void onScannedRobot(ScannedRobotEvent e) {
+
 		if (enemy == null) {
 			enemy = new EnemyImpl(e.getName(), e.getEnergy(), e.getVelocity());
 		}
@@ -45,34 +56,39 @@ public class MyBot extends AdvancedRobot implements Bot {
 
 		surfDirections.add(0, (lateralVelocity >= 0) ? 1 : -1);
 		surfAbsBearings.add(0, absBearing + Math.PI);
+		// Adicionar o Math.pi para trasnformar o norte verdadeiro em uma reta
+		// horizontal, pois para
+		// frente vai ser usado o absBearing entre 2 pontos e esse função calcula o
+		// angulo formado pela diferença e entre as e o eixo das Abscissa
 
 		double bulletPower = enemy.getEnergy() - e.getEnergy();
 		if (bulletPower < 3.01 && bulletPower > 0.09 && surfDirections.size() > 2) {
-			EnemyWave ew = new EnemyWave();
+			Wave ew = new Wave();
 			ew.setFireTime(getTime() - 1);
 			ew.setBulletVelocity(Util.bulletVelocity(bulletPower));
 			ew.setDistanceTraveled(Util.bulletVelocity(bulletPower));
 			ew.setDirection(surfDirections.get(2));
 			ew.setDirectAngle(surfAbsBearings.get(2));
-			ew.setFireLocation((Point2D.Double) enemy.getLocation().clone());
-			EnemyWaveManager.SINGLETON.enemyWaves.add(ew);
+			ew.setFireLocation((Point2D.Double) enemy.getMyLocation().clone());
+			WaveManager.SINGLETON.enemyWaves.add(ew);
 		}
 
 		enemy.setEnergy(e.getEnergy());
 		enemy.setLocation(Util.project(myLocation, absBearing, e.getDistance()));
-		EnemyWaveManager.SINGLETON.updateWaves(getTime(), myLocation);
-		doSurfing();
+		WaveManager.SINGLETON.updateWaves(getTime(), myLocation);
+		if (isToSurf)
+			doSurfing();
 		setTurnGunRightRadians(Utils.normalRelativeAngle(absBearing - getGunHeadingRadians()));
-		setFire(1);
+		// doShoot();
 	}
 
 	public void onHitByBullet(HitByBulletEvent e) {
 
-		if (!EnemyWaveManager.SINGLETON.enemyWaves.isEmpty()) {
+		if (!WaveManager.SINGLETON.enemyWaves.isEmpty()) {
 			Point2D.Double hitBulletLocation = new Point2D.Double(e.getBullet().getX(), e.getBullet().getY());
-			EnemyWave hitWave = null;
-			for (int x = 0; x < EnemyWaveManager.SINGLETON.enemyWaves.size(); x++) {
-				EnemyWave ew = EnemyWaveManager.SINGLETON.enemyWaves.get(x);
+			Wave hitWave = null;
+			for (int x = 0; x < WaveManager.SINGLETON.enemyWaves.size(); x++) {
+				Wave ew = WaveManager.SINGLETON.enemyWaves.get(x);
 
 				if (Math.abs(ew.getDistanceTraveled() - myLocation.distance(ew.getFireLocation())) < 50
 						&& Math.abs(Util.bulletVelocity(e.getBullet().getPower()) - ew.getBulletVelocity()) < 0.001) {
@@ -81,22 +97,71 @@ public class MyBot extends AdvancedRobot implements Bot {
 				}
 			}
 			if (hitWave != null) {
-				EnemyWaveManager.SINGLETON.logHit(hitWave, hitBulletLocation);
+				WaveManager.SINGLETON.logHit(hitWave, hitBulletLocation, WaveManager.SINGLETON.surfStats);
 
 				// We can remove this wave now, of course.
-				EnemyWaveManager.SINGLETON.enemyWaves
-						.remove(EnemyWaveManager.SINGLETON.enemyWaves.lastIndexOf(hitWave));
+				WaveManager.SINGLETON.enemyWaves.remove(WaveManager.SINGLETON.enemyWaves.lastIndexOf(hitWave));
 			}
 		}
 	}
 
+	@Override
+	public void onBulletHit(BulletHitEvent event) {
+		Point2D.Double bullet = enemy.getMyLocation();
+		WaveManager.SINGLETON.logHit(mw, bullet, WaveManager.SINGLETON.enemyStat);
+
+	}
+
+	@Override
+	public void doShoot() {
+		mw = new Wave();
+		mw.setFireTime(getTime());
+		mw.setBulletVelocity(Util.bulletVelocity(1));
+		mw.setDistanceTraveled(Util.bulletVelocity(1));
+		mw.setDirection(direction);
+		mw.setDirectAngle(directAngle);
+		mw.setFireLocation((Point2D.Double) getMyLocation().clone());
+		WaveManager.SINGLETON.myWaves.add(mw);
+
+		int indexL = WaveManager.SINGLETON.guess(mw, 1, enemy);
+		int indexR = WaveManager.SINGLETON.guess(mw, -1, enemy);
+
+		// System.out.println(WaveManager.SINGLETON.enemyStat[indexL] + " " +
+		// WaveManager.SINGLETON.enemyStat[indexR]);
+		double offset = 0;
+		if (indexL < indexR) {
+			offset = Util.wallSmoothing(myLocation, getHeadingRadians() - (Math.PI / 2), -1, _fieldRect);
+		} else {
+			offset = Util.wallSmoothing(myLocation, getHeadingRadians() + (Math.PI / 2), 1, _fieldRect);
+		}
+
+		// +Math.PI;
+		// System.out.println(goAngle);
+		// goAngle -= getGunHeadingRadians();
+		// setTurnGunLeft(goAngle);
+		// WaveManager.SINGLETON.enmyStatPrint();
+		// System.out.println(indexL + " " + indexR);
+
+		setFire(1);
+	}
+
+	@Override
+	public void onHitRobot(HitRobotEvent event) {
+		isToSurf = false;
+		double angle = Util.wallSmoothing(getMyLocation(), getHeadingRadians() + (Math.PI / 2), direction, _fieldRect);
+		setTurnLeftRadians(angle);
+		ahead(100);
+		isToSurf = true;
+	}
+
+	@Override
 	public void doSurfing() {
-		EnemyWave surfWave = EnemyWaveManager.SINGLETON.getClosestSurfableWave(myLocation);
+		Wave surfWave = WaveManager.SINGLETON.getClosestSurfableWave(myLocation);
 		if (surfWave == null) {
 			return;
 		}
-		double dangerLeft = EnemyWaveManager.SINGLETON.checkDanger(surfWave, -1, this);
-		double dangerRight = EnemyWaveManager.SINGLETON.checkDanger(surfWave, 1, this);
+		double dangerLeft = WaveManager.SINGLETON.checkDanger(surfWave, -1, this);
+		double dangerRight = WaveManager.SINGLETON.checkDanger(surfWave, 1, this);
 
 		double goAngle = Util.absoluteBearing(surfWave.getFireLocation(), myLocation);
 		if (dangerLeft < dangerRight) {
@@ -122,7 +187,7 @@ public class MyBot extends AdvancedRobot implements Bot {
 
 	@Override
 	public double getMyHeadingRadians() {
-		// TODO Auto-generated method stub
+		// TODO Auto-generated methodo stub
 		return getGunHeadingRadians();
 	}
 
@@ -130,6 +195,55 @@ public class MyBot extends AdvancedRobot implements Bot {
 	public java.awt.geom.Point2D.Double getMyLocation() {
 		// TODO Auto-generated method stub
 		return myLocation;
+	}
+
+	public void onPaint(java.awt.Graphics2D g) {
+		g.setColor(java.awt.Color.red);
+		for (int i = 0; i < WaveManager.SINGLETON.enemyWaves.size(); i++) {
+			Wave w = (Wave) (WaveManager.SINGLETON.enemyWaves.get(i));
+			Point2D.Double center = w.getFireLocation();
+
+			// int radius = (int)(w.distanceTraveled + w.bulletVelocity);
+			// hack to make waves line up visually, due to execution sequence in robocode
+			// engine
+			// use this only if you advance waves in the event handlers (eg. in
+			// onScannedRobot())
+			// NB! above hack is now only necessary for robocode versions before 1.4.2
+			// otherwise use:
+			int radius = (int) w.getDistanceTraveled();
+
+			// Point2D.Double center = w.fireLocation;
+			if (radius - 40 < center.distance(myLocation))
+				g.drawOval((int) (center.x - radius), (int) (center.y - radius), radius * 2, radius * 2);
+		}
+	}
+
+	@Override
+	public double getDirectAngle() {
+		return directAngle;
+	}
+
+	@Override
+	public double getDirection() {
+		// TODO Auto-generated method stub
+		return direction;
+	}
+
+	@Override
+	public void setEnergy(double energy) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void setVelocity(double velocity) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void setLocation(java.awt.geom.Point2D.Double location) {
+		this.myLocation = location;
 	}
 
 }

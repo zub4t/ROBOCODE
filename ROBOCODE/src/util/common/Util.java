@@ -5,7 +5,7 @@ import java.awt.geom.Rectangle2D;
 
 import robocode.AdvancedRobot;
 import robocode.util.Utils;
-import util.enemy.EnemyWave;
+import util.enemy.Wave;
 import sushllbot.Bot;
 
 public class Util {
@@ -23,6 +23,20 @@ public class Util {
 		return Math.atan2(target.x - source.x, target.y - source.y);
 	}
 
+	public static double absoluteBearing2(Point2D.Double source, Point2D.Double target) {
+		double dx = target.x - source.x;
+		double dy = target.y - source.y;
+		double d = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+		if (d != 0) {
+			double t = (180 / Math.PI) * Math.acos(dx / d);
+			if (dy < 0) {
+				return 360 - t;
+			}
+		}
+		return 0;
+	
+	}
+
 	/**
 	 * Função usado para normalizar um valor entre um mínimo e um máximo
 	 * 
@@ -32,6 +46,7 @@ public class Util {
 	 * @param max   Valor mais alto de um conjunto.
 	 * @return Valor normalizado, garante que min=<value>=max
 	 */
+	//clamp
 	public static double limit(double min, double value, double max) {
 		return Math.max(min, Math.min(value, max));
 	}
@@ -128,7 +143,7 @@ public class Util {
 		return angle;
 	}
 
-	public static Point2D.Double predictPosition(Bot bot, EnemyWave surfWave, int direction) {
+	public static Point2D.Double predictPosition(Bot bot, Wave surfWave, int direction) {
 		// CREDIT: mini sized predictor from Apollon, by rozu
 		// http://robowiki.net?Apollon
 		Point2D.Double predictedPosition = (Point2D.Double) bot.getMyLocation().clone();

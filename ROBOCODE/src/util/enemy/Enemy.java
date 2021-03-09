@@ -5,23 +5,18 @@ package util.enemy;
 
 import java.awt.geom.Point2D;
 
+import robocode.util.Utils;
+import sushllbot.Bot;
+import util.common.Util;
+
 /**
  * @author marco
  * 
  */
 public interface Enemy {
-	public String getName();
 
-	public double getEnergy();
+	public void setWave(Wave wave);
 
-	public double getVelocity();
-
-	public void setEnergy(double energy);
-
-	public void setVelocity(double velocity);
-
-	public void setLocation(Point2D.Double location);
-
-	public Point2D.Double getLocation();
+	public Wave getWave();
 
 }

@@ -2,13 +2,13 @@ package util.enemy;
 
 import java.awt.geom.Point2D;
 
-public class EnemyWave {
+public class Wave {
 	private Point2D.Double fireLocation;
 	private long fireTime;
 	private Double bulletVelocity, directAngle, distanceTraveled;
 	private int direction;
 
-	public EnemyWave() {
+	public Wave() {
 	}
 
 	public Point2D.Double getFireLocation() {
