@@ -1,8 +1,8 @@
 package lucaspkg;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
+
+import lucas.util.Util;
 
 import robocode.*;
 import robocode.util.Utils;
@@ -13,43 +13,38 @@ public class LucasRobot extends AdvancedRobot {
 	int scannedY = Integer.MIN_VALUE;
 
 	public void run() {
+        setAdjustGunForRobotTurn(true);
+        setAdjustRadarForGunTurn(true);
+        do {
+            turnRadarRight(Double.POSITIVE_INFINITY);
+        } while (true);
+    }
 
+	public void onScannedRobot(ScannedRobotEvent event) {
+		double bulletPower = Util.smartBulletPower(event);
+		double enemyX = Util.getEnemyX(event, this);
+		double enemyY = Util.getEnemyY(event, this);
+		double enemyHeading = event.getHeadingRadians();
+		double enemyVelocity = event.getVelocity();
+
+		double simulationTime = 0; // No tempo simulationTime=0, o ponto previsto é onde o inimigo está
+		double predictedX = enemyX;
+		double predictedY = enemyY;
+		// Simulação de onde o inimigo vai estar quando nossa bala alcançar ele
+		while (Util.checkIfBulletDistanceIsGreaterThanEnemyDistance(event, this, bulletPower, simulationTime,
+				predictedX, predictedY)) {
+			predictedX += Math.sin(enemyHeading) * enemyVelocity;
+			predictedY += Math.cos(enemyHeading) * enemyVelocity;
+			// Se a previsão for fora da arena interrompe o ciclo
+			if (predictedX < 0 || predictedX > 800 || predictedY < 0 || predictedY > 600)
+				break;
+			simulationTime++;
+		}
+
+		Util.setAimToPredictedPosition(predictedX, predictedY, this);
+		this.setFire(bulletPower);
+
+		Util.trackEnemyWithRadar(event, this);
 	}
 
-	// Paint a transparent square on top of the last scanned robot
-	public void onPaint(Graphics2D g) {
-		// Set the paint color to a red half transparent color
-		g.setColor(Color.red);
-
-		Point2D.Double sourceLocation = new Point2D.Double();
-		sourceLocation.setLocation(getX(), getY());
-		sourceLocation = projectt(sourceLocation, Math.PI / 3, 21);
-
-		g.fillRect((int) sourceLocation.getX(), (int) sourceLocation.getY(), 10, 10);
-		g.setColor(Color.blue);
-
-		sourceLocation = project(sourceLocation, Math.PI / 3, 20);
-
-		g.fillRect((int) sourceLocation.getX(), (int) sourceLocation.getY(), 10, 10);
-
-		g.setColor(Color.white);
-		g.fillRect((int) getX(), (int) getY(), 10, 10);
-
-	}
-
-	public static Point2D.Double project(Point2D.Double sourceLocation, double angle, double length) {
-		// CREDIT: from CassiusClay, by PEZ robowiki.net?CassiusClay
-		return new Point2D.Double(sourceLocation.x + (Math.sin(angle) * length),
-				sourceLocation.y + (Math.cos(angle) * length));
-	}
-
-	public static Point2D.Double projectt(Point2D.Double sourceLocation, double angle, double length) {
-		// CREDIT: from CassiusClay, by PEZ robowiki.net?CassiusClay
-		return new Point2D.Double(sourceLocation.x + (Math.cos(angle) * length),
-				sourceLocation.y + (Math.sin(angle) * length));
-	}
-
-	public void onScannedRobot(ScannedRobotEvent e) {
-		// fire(1);
-	}
 }
