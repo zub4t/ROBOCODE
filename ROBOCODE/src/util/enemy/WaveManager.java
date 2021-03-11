@@ -3,6 +3,7 @@ package util.enemy;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
+import robocode.AdvancedRobot;
 import robocode.util.Utils;
 import sushllbot.Bot;
 import util.common.Util;
@@ -11,15 +12,12 @@ public class WaveManager {
 	public static WaveManager SINGLETON = new WaveManager();
 	public ArrayList<Wave> enemyWaves;
 	public ArrayList<Wave> myWaves;
-	public static int BINS = 47;
+	public static int BINS = 67;
 	public static double surfStats[] = new double[BINS];
 	public static double enemyStat[] = new double[BINS];
 
 	public WaveManager() {
-
 		this.enemyWaves = new ArrayList<>();
-		this.myWaves = new ArrayList<>();
-
 	}
 
 	/**
@@ -80,23 +78,8 @@ public class WaveManager {
 		// CREDIT: Wave_Surfing_Tutorial,
 		// https://www.robowiki.net/wiki/Wave_Surfing_Tutorial
 		double offsetAngle = (Util.absoluteBearing(ew.getFireLocation(), targetLocation) - ew.getDirectAngle());
-		// offsetAngle é o ângulo em que o inimigo estava a mirar quando atirou.
-		// Util.absoluteBearing(ew.getFireLocation(), targetLocation) descreve o ângulo
-		// de deslocamento desde que o inimigo atirou até o exato momento.
-		// ew.getDirectAngle() é um ângulo normal com o ângulo criado por
-		// enemy.getBearingRadians() + getHeadingRadians(); 2 ticks antes de detectarmos
-		// que o inimigo atirou
 		double factor = Utils.normalRelativeAngle(offsetAngle) / Util.maxEscapeAngle(ew.getBulletVelocity())
 				* ew.getDirection();
-
-		// factor
-		// representa o Bearing que o inimigo alcançaria se maximizasse seu
-		// ângulo de escape enquanto se move em sua direção atual em relação ao robô de
-		// disparo (ou seja, no sentido horário ou anti-horário), -1.0 representa o
-		// deslocamento de rumo que o inimigo alcançaria se maximizasse seu ângulo de
-		// escape depois de inverter as direções, e 0,0 representa o deslocamento de
-		// rumo que aponta diretamente para o inimigo
-		// https://www.robowiki.net/wiki/Maximum_Escape_Angle
 		return (int) Util.limit(0, (factor * ((BINS - 1) / 2)) + ((BINS - 1) / 2), BINS - 1);
 	}
 
@@ -105,32 +88,18 @@ public class WaveManager {
 	 * @param ew
 	 * @param targetLocation
 	 */
-	public void logHit(Wave ew, Point2D.Double targetLocation,double[] arr) {
+	public void logHit(Wave ew, Point2D.Double targetLocation, double[] arr) {
 		int index = getFactorIndex(ew, targetLocation);
 		for (int x = 0; x < BINS; x++) {
-			// for the spot bin that we were hit on, add 1;
-			// for the bins next to it, add 1 / 2;
-			// the next one, add 1 / 5; and so on...
+	
 			arr[x] += 1.0 / (Math.pow(index - x, 2) + 1);
 		}
 	}
-
-	public double checkDanger(Wave surfWave, int direction, Bot bot) {
+	public double checkDanger(Wave surfWave, int direction, AdvancedRobot bot) {
 		int index = getFactorIndex(surfWave, Util.predictPosition(bot, surfWave, direction));
-
+		System.out.println("index " + index);
 		return surfStats[index];
 	}
 
-	public int guess(Wave mw, int direction, Bot bot) {
-		return WaveManager.SINGLETON.getFactorIndex(mw, Util.predictPosition(bot, mw, direction));
 
-	}
-
-	public void enmyStatPrint() {
-		for (int i = 0; i < enemyStat.length; i++) {
-			System.out.print(enemyStat[i]+" ; ");
-		}
-		System.out.println("");
-		
-	}
 }

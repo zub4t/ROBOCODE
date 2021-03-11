@@ -1,5 +1,16 @@
 package marco.common;
 
-public class Component {
+import robocode.AdvancedRobot;
+import robocode.HitByBulletEvent;
+import robocode.ScannedRobotEvent;
+
+public interface Component {
+
+	public void onScannedRobot(ScannedRobotEvent e);
+
+	public void doTickAction();
+
+	public void onHitByBullet(HitByBulletEvent e);
 	
+	public void setOwner(AdvancedRobot bot);
 }

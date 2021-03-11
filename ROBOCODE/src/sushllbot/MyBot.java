@@ -112,38 +112,7 @@ public class MyBot extends AdvancedRobot implements Bot {
 
 	}
 
-	@Override
-	public void doShoot() {
-		mw = new Wave();
-		mw.setFireTime(getTime());
-		mw.setBulletVelocity(Util.bulletVelocity(1));
-		mw.setDistanceTraveled(Util.bulletVelocity(1));
-		mw.setDirection(direction);
-		mw.setDirectAngle(directAngle);
-		mw.setFireLocation((Point2D.Double) getMyLocation().clone());
-		WaveManager.SINGLETON.myWaves.add(mw);
 
-		int indexL = WaveManager.SINGLETON.guess(mw, 1, enemy);
-		int indexR = WaveManager.SINGLETON.guess(mw, -1, enemy);
-
-		// System.out.println(WaveManager.SINGLETON.enemyStat[indexL] + " " +
-		// WaveManager.SINGLETON.enemyStat[indexR]);
-		double offset = 0;
-		if (indexL < indexR) {
-			offset = Util.wallSmoothing(myLocation, getHeadingRadians() - (Math.PI / 2), -1, _fieldRect);
-		} else {
-			offset = Util.wallSmoothing(myLocation, getHeadingRadians() + (Math.PI / 2), 1, _fieldRect);
-		}
-
-		// +Math.PI;
-		// System.out.println(goAngle);
-		// goAngle -= getGunHeadingRadians();
-		// setTurnGunLeft(goAngle);
-		// WaveManager.SINGLETON.enmyStatPrint();
-		// System.out.println(indexL + " " + indexR);
-
-		setFire(1);
-	}
 
 	@Override
 	public void onHitRobot(HitRobotEvent event) {
@@ -244,6 +213,12 @@ public class MyBot extends AdvancedRobot implements Bot {
 	@Override
 	public void setLocation(java.awt.geom.Point2D.Double location) {
 		this.myLocation = location;
+	}
+
+	@Override
+	public void doShoot() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

@@ -3,6 +3,7 @@ package util.common;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 
+import marco.common.BattleField;
 import robocode.AdvancedRobot;
 import robocode.util.Utils;
 import util.enemy.Wave;
@@ -34,7 +35,7 @@ public class Util {
 			}
 		}
 		return 0;
-	
+
 	}
 
 	/**
@@ -46,7 +47,7 @@ public class Util {
 	 * @param max   Valor mais alto de um conjunto.
 	 * @return Valor normalizado, garante que min=<value>=max
 	 */
-	//clamp
+	// clamp
 	public static double limit(double min, double value, double max) {
 		return Math.max(min, Math.min(value, max));
 	}
@@ -143,12 +144,12 @@ public class Util {
 		return angle;
 	}
 
-	public static Point2D.Double predictPosition(Bot bot, Wave surfWave, int direction) {
+	public static Point2D.Double predictPosition(AdvancedRobot bot, Wave surfWave, int direction) {
 		// CREDIT: mini sized predictor from Apollon, by rozu
 		// http://robowiki.net?Apollon
-		Point2D.Double predictedPosition = (Point2D.Double) bot.getMyLocation().clone();
-		double predictedHeading = bot.getMyHeadingRadians();
-		double predictedVelocity = bot.getMyVelocity();
+		Point2D.Double predictedPosition = new Point2D.Double(bot.getX(), bot.getY());
+		double predictedHeading = bot.getHeadingRadians();
+		double predictedVelocity = bot.getVelocity();
 		double maxTurning, moveAngle, moveDir;
 
 		int counter = 0; // number of ticks in the future
@@ -157,7 +158,7 @@ public class Util {
 		do {
 			moveAngle = wallSmoothing(predictedPosition,
 					absoluteBearing(surfWave.getFireLocation(), predictedPosition) + (direction * (Math.PI / 2)),
-					direction, bot.getFieldRect()) - predictedHeading;
+					direction, BattleField.battleField) - predictedHeading;
 			moveDir = 1;
 
 			if (Math.cos(moveAngle) < 0) {
