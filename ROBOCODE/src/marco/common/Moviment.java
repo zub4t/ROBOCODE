@@ -3,10 +3,13 @@ package marco.common;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
+import hackersNL.BerendBotje;
 import marco.monitoring.Wave;
 import marco.monitoring.WaveManager;
 import marco.util.Util;
 import robocode.AdvancedRobot;
+import robocode.BulletHitEvent;
+import robocode.BulletMissedEvent;
 import robocode.HitByBulletEvent;
 import robocode.ScannedRobotEvent;
 import robocode.util.Utils;
@@ -19,6 +22,8 @@ public class Moviment implements Component {
 	private Point2D.Double enemyLocation = null;
 	private Point2D.Double myLocation;
 	private AdvancedRobot bot;
+	int direction = 1;
+	int missedShot = 0;
 
 	public double getOppEnergy() {
 		return oppEnergy;
@@ -32,8 +37,6 @@ public class Moviment implements Component {
 		myLocation = new Point2D.Double(bot.getX(), bot.getY());
 		double lateralVelocity = bot.getVelocity() * Math.sin(e.getBearingRadians());
 		double absBearing = e.getBearingRadians() + bot.getHeadingRadians();
-		bot.setTurnRadarRightRadians(Utils.normalRelativeAngle(absBearing - bot.getRadarHeadingRadians()) * 2);
-
 		surfDirections.add(0, (lateralVelocity >= 0) ? 1 : -1);
 		surfAbsBearings.add(0, absBearing + Math.PI);
 		double bulletPower = oppEnergy - e.getEnergy();
@@ -52,15 +55,23 @@ public class Moviment implements Component {
 		oppEnergy = e.getEnergy();
 		enemyLocation = Util.project(myLocation, absBearing, e.getDistance());
 		WaveManager.SINGLETON.updateWaves(bot.getTime(), myLocation);
+		System.out.println("missed" + missedShot);
 
-		if (!doSurfing()) {
-//			double angle = Util.wallSmoothing(myLocation, e.getBearingRadians() * -1,
-//					Math.sin(e.getBearingRadians()) > 0 ? 1 : -1, BattleField.battleField);
-//			bot.setTurnRightRadians(angle);
-//			bot.ahead(100);
+		if (missedShot > 10) {
+			int preferredDistance = 20; // Preferred distance from target
+			int side = e.getDistance() > preferredDistance ? 1 : -1;
+			if (bulletPower < 3.01 && bulletPower > 0.09 && surfDirections.size() > 2)
+				bot.setTurnRightRadians(e.getBearingRadians() * direction * side);
+			if (bot.getDistanceRemaining() == 0) {
+				direction *= -1;
+				bot.setAhead((e.getDistance() / 4 + 60) * direction);
+			}
+			bot.setTurnRightRadians(e.getBearingRadians() + Math.PI / 2 - 0.6 * direction * side);
 
+		} else {
+			doSurfing();
 		}
-		bot.setTurnGunRightRadians(Utils.normalRelativeAngle(absBearing - bot.getGunHeadingRadians()));
+
 	}
 
 	public void onHitByBullet(HitByBulletEvent e) {
@@ -128,6 +139,18 @@ public class Moviment implements Component {
 	@Override
 	public void doTickAction() {
 		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onBulletMissed(BulletMissedEvent event) {
+		missedShot++;
+
+	}
+
+	@Override
+	public void onBulletHit(BulletHitEvent event) {
+		// missedShot = 0;
 
 	}
 
