@@ -10,6 +10,9 @@ import robocode.util.Utils;
 public class Radar implements Component {
 	private AdvancedRobot bot;
 
+	/**
+	 *Radar fica sempre focado no robô inimigo.
+	 */
 	@Override
 	public void onScannedRobot(ScannedRobotEvent e) {
 		double absBearing = e.getBearingRadians() + bot.getHeadingRadians();

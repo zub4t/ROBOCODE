@@ -6,11 +6,12 @@ import java.util.ArrayList;
 import hackersNL.BerendBotje;
 import marco.monitoring.Wave;
 import marco.monitoring.WaveManager;
-import marco.util.Util;
 import robocode.AdvancedRobot;
+import robocode.BattleEndedEvent;
 import robocode.BulletHitEvent;
 import robocode.BulletMissedEvent;
 import robocode.HitByBulletEvent;
+import robocode.RoundEndedEvent;
 import robocode.ScannedRobotEvent;
 import robocode.util.Utils;
 
@@ -22,8 +23,9 @@ public class Moviment implements Component {
 	private Point2D.Double enemyLocation = null;
 	private Point2D.Double myLocation;
 	private AdvancedRobot bot;
-	int direction = 1;
-	int missedShot = 0;
+	private boolean isEnemyShoting = true;
+	private int direction = 1;
+	private int missedShot = 0;
 
 	public double getOppEnergy() {
 		return oppEnergy;
@@ -33,7 +35,22 @@ public class Moviment implements Component {
 		this.oppEnergy = oppEnergy;
 	}
 
+	/**
+	 * Função principal da movimentação, existem duas movimentações aqui,
+	 * waveSurfing e ZigZagAllIn. A cada vez que o inimigo atira é gerada uma wave
+	 * que usaremos para desviar das tiros. Wave seria como uma pedra caindo em um
+	 * lago. A cada vez que é possivel "surfar" uma Wave decidimos qual a direção
+	 * com o menor risco a tomar, baseado em um Guess Factor.
+	 * https://robowiki.net/wiki/GuessFactor Caso haja uma oportunidade de Allin
+	 * então a executamos, essa oportunidade vem de estarmos a uma distância de
+	 * DISTANCE_TO_ALL_IN de um robô.
+	 *
+	 */
 	public void onScannedRobot(ScannedRobotEvent e) {
+		System.out.println("bot.getTime() "+bot.getTime()+" - "+WaveManager.SINGLETON.enemyWaves.size());
+		if (bot.getTime() > 50 && WaveManager.SINGLETON.enemyWaves.size() == 0) {
+			isEnemyShoting = false;
+		}
 		myLocation = new Point2D.Double(bot.getX(), bot.getY());
 		double lateralVelocity = bot.getVelocity() * Math.sin(e.getBearingRadians());
 		double absBearing = e.getBearingRadians() + bot.getHeadingRadians();
@@ -49,16 +66,12 @@ public class Moviment implements Component {
 			ew.setDirectAngle(surfAbsBearings.get(2));
 			ew.setFireLocation((Point2D.Double) enemyLocation.clone());
 			WaveManager.SINGLETON.enemyWaves.add(ew);
-
 		}
-
 		oppEnergy = e.getEnergy();
 		enemyLocation = Util.project(myLocation, absBearing, e.getDistance());
 		WaveManager.SINGLETON.updateWaves(bot.getTime(), myLocation);
-		System.out.println("missed" + missedShot);
-
-		if (missedShot > 10) {
-			int preferredDistance = 20; // Preferred distance from target
+		if (myLocation.distance(enemyLocation) < DISTANCE_TO_ALL_IN || !isEnemyShoting) {
+			int preferredDistance = 20;
 			int side = e.getDistance() > preferredDistance ? 1 : -1;
 			if (bulletPower < 3.01 && bulletPower > 0.09 && surfDirections.size() > 2)
 				bot.setTurnRightRadians(e.getBearingRadians() * direction * side);
@@ -74,6 +87,10 @@ public class Moviment implements Component {
 
 	}
 
+	/**
+	 * Metodo que irá incrementar o risco de seguirmos uma direção (esquerda ou
+	 * direita),O GuessFactor irá nos dizer isso mais tarde.
+	 */
 	public void onHitByBullet(HitByBulletEvent e) {
 
 		if (!WaveManager.SINGLETON.enemyWaves.isEmpty()) {
@@ -90,8 +107,6 @@ public class Moviment implements Component {
 			}
 			if (hitWave != null) {
 				WaveManager.SINGLETON.logHit(hitWave, hitBulletLocation);
-
-				// We can remove this wave now, of course.
 				WaveManager.SINGLETON.enemyWaves.remove(WaveManager.SINGLETON.enemyWaves.lastIndexOf(hitWave));
 			}
 		}
@@ -100,31 +115,16 @@ public class Moviment implements Component {
 	public boolean doSurfing() {
 		Wave surfWave = WaveManager.SINGLETON.getClosestSurfableWave(myLocation);
 		if (surfWave != null) {
-
 			double dangerLeft = WaveManager.SINGLETON.checkDanger(surfWave, -1, bot);
 			double dangerRight = WaveManager.SINGLETON.checkDanger(surfWave, 1, bot);
-			Point2D.Double p1, p2;
-			p1 = Util.predictPosition(bot, surfWave, 1);
-			p2 = Util.predictPosition(bot, surfWave, -1);
 			double goAngle = Util.absoluteBearing(surfWave.getFireLocation(), myLocation);
 			if (dangerLeft < dangerRight) {
-				if (p2.distance(enemyLocation) < 100) {
-					goAngle = Util.wallSmoothing(myLocation, goAngle - (Math.PI / 2), 1, BattleField.battleField);
-
-				} else {
-					goAngle = Util.wallSmoothing(myLocation, goAngle - (Math.PI / 2), -1, BattleField.battleField);
-
-				}
+				goAngle = Util.wallSmoothing(myLocation, goAngle - (Math.PI / 2), -1,
+						BattleField.battleFieldWithOffset);
 			} else {
-				if (p1.distance(enemyLocation) < 100) {
-					goAngle = Util.wallSmoothing(myLocation, goAngle - (Math.PI / 2), -1, BattleField.battleField);
-
-				} else {
-					goAngle = Util.wallSmoothing(myLocation, goAngle - (Math.PI / 2), +1, BattleField.battleField);
-
-				}
+				goAngle = Util.wallSmoothing(myLocation, goAngle - (Math.PI / 2), +1,
+						BattleField.battleFieldWithOffset);
 			}
-
 			Util.driveWithAngle(bot, goAngle);
 			return true;
 		}
@@ -147,6 +147,9 @@ public class Moviment implements Component {
 		missedShot++;
 
 	}
+
+
+
 
 	@Override
 	public void onBulletHit(BulletHitEvent event) {

@@ -1,6 +1,7 @@
 package marco.common;
 
-import lucas.util.Util;
+import java.awt.geom.Point2D;
+
 import robocode.AdvancedRobot;
 import robocode.BulletHitEvent;
 import robocode.BulletMissedEvent;
@@ -9,31 +10,48 @@ import robocode.ScannedRobotEvent;
 
 public class Gun implements Component {
 	private AdvancedRobot bot;
+	private Point2D.Double myLocation;
+	private Point2D.Double enemyLocation;
+	private double bulletPower;
+	private double enemyHeading;
+	private double enemyVelocity;
+	private double simulationTime;
+	private double predictedX;
+	private double predictedY;
 
+	public void getInfoAboutTheEnemyRobot(ScannedRobotEvent event) {
+		myLocation = new Point2D.Double(bot.getX(), bot.getY());
+		double absBearing = event.getBearingRadians() + bot.getHeadingRadians();
+		enemyLocation = Util.project(myLocation, absBearing, event.getDistance());
+		bulletPower = Util.smartBulletPower(event);
+		enemyHeading = event.getHeadingRadians();
+		enemyVelocity = event.getVelocity();
+		simulationTime = 0;
+		predictedX = enemyLocation.getX();
+		predictedY = enemyLocation.getY();
+	}
+
+	/**
+	 *A estrategia aqui é dar um previsão linear de onde o inimigo estára se seguir a mesma direção de quando miramos. 
+	 */
 	public void onScannedRobot(ScannedRobotEvent event) {
-		double bulletPower = Util.smartBulletPower(event);
-		double enemyX = Util.getEnemyX(event, bot);
-		double enemyY = Util.getEnemyY(event, bot);
-		double enemyHeading = event.getHeadingRadians();
-		double enemyVelocity = event.getVelocity();
-		double simulationTime = 0; // No tempo simulationTime=0, o ponto previsto é onde o inimigo está
-		double predictedX = enemyX;
-		double predictedY = enemyY;
-		// Simulação de onde o inimigo vai estar quando nossa bala alcançar ele
+		getInfoAboutTheEnemyRobot(event);
 		while (Util.checkIfBulletDistanceIsGreaterThanEnemyDistance(event, bot, bulletPower, simulationTime, predictedX,
 				predictedY)) {
 			predictedX += Math.sin(enemyHeading) * enemyVelocity;
 			predictedY += Math.cos(enemyHeading) * enemyVelocity;
-			// Se a previsão for fora da arena interrompe o ciclo
-			if (predictedX < 0 || predictedX > 800 || predictedY < 0 || predictedY > 600)
+			Point2D.Double predictedPosition = new Point2D.Double(predictedX, predictedY);
+			if (!BattleField.battleField.contains(predictedPosition))
 				break;
 			simulationTime++;
 		}
-
 		Util.setAimToPredictedPosition(predictedX, predictedY, bot);
-		bot.setFire(bulletPower);
 
-		Util.trackEnemyWithRadar(event, bot);
+		if (myLocation.distance(enemyLocation) < DISTANCE_TO_ALL_IN)
+			bot.setFire(3);
+		if (event.getEnergy() < 90)
+			bot.setFire(1);
+
 	}
 
 	@Override
@@ -56,13 +74,13 @@ public class Gun implements Component {
 	@Override
 	public void onBulletMissed(BulletMissedEvent event) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void onBulletHit(BulletHitEvent event) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 }

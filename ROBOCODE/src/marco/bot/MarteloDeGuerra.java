@@ -16,12 +16,21 @@ import robocode.BulletHitEvent;
 import robocode.BulletMissedEvent;
 import robocode.HitByBulletEvent;
 import robocode.HitRobotEvent;
+import robocode.RoundEndedEvent;
 import robocode.ScannedRobotEvent;
 import robocode.util.Utils;
 import util.common.Util;
 import util.enemy.EnemyImpl;
 
 public class MarteloDeGuerra extends AdvancedRobot {
+
+	/*
+	 * Esse robô tem como inspiração os artigos abaixo do roboWiki.
+	 * https://robowiki.net/wiki/Maximum_Escape_Angle
+	 * https://robowiki.net/wiki/GuessFactor
+	 * https://robowiki.net/wiki/Wave_Surfing
+	 */
+
 	private Component moviment = new Moviment();
 	private Component gun = new Gun();
 	private Component radar = new Radar();
@@ -34,7 +43,9 @@ public class MarteloDeGuerra extends AdvancedRobot {
 		moviment.setOwner(this);
 		gun.setOwner(this);
 		radar.setOwner(this);
-		BattleField.setRect(18, 18, 764, 564);
+		BattleField.setRectWithOffset(18, 18, (int) getBattleFieldWidth() - 100, (int) getBattleFieldHeight() - 100);
+		BattleField.setRect(0, 0, (int) getBattleFieldWidth(), (int) getBattleFieldHeight());
+
 		setAdjustGunForRobotTurn(true);
 		setAdjustRadarForGunTurn(true);
 		do {
@@ -55,6 +66,7 @@ public class MarteloDeGuerra extends AdvancedRobot {
 		moviment.onScannedRobot(event);
 		gun.onScannedRobot(event);
 		radar.onScannedRobot(event);
+
 		paintRobot();
 	}
 
@@ -66,30 +78,22 @@ public class MarteloDeGuerra extends AdvancedRobot {
 
 	@Override
 	public void onBulletHit(BulletHitEvent event) {
+
 		moviment.onBulletHit(event);
 
 	}
-
 	@Override
-	public void onPaint(java.awt.Graphics2D g) {
-		g.setColor(java.awt.Color.red);
-		for (Wave w : WaveManager.SINGLETON.enemyWaves) {
-			Point2D.Double center = w.getFireLocation();
-			int radius = (int) w.getDistanceTraveled();
-			// Point2D.Double center = w.fireLocation;
-			if (radius - 40 < center.distance(new Point2D.Double(getX(), getY())))
-				g.drawOval((int) (center.x - radius), (int) (center.y - radius), radius * 2, radius * 2);
-		}
+	public void onRoundEnded(RoundEndedEvent event) {
+		WaveManager.SINGLETON.enemyWaves.clear();
+		
 	}
-
 	public void paintRobot() {
-		float color1 = (float) Math.random();
-		float color2 = (float) Math.random();
-		float color3 = (float) Math.random();
-		setBodyColor(new Color(color1, color2, color3));
-		setGunColor(new Color(color1, color2, color3));
-		setRadarColor(new Color(color1, color2, color3));
-		setBulletColor(new Color(color1, color2, color3));
-		setScanColor(new Color(color1, color2, color3));
+		float red = (float) Math.random();
+		float green = (float) Math.random();
+		float blue = (float) Math.random();
+		setBodyColor(new Color(red, green, blue));
+		setGunColor(new Color(red, green, blue));
+		setRadarColor(new Color(red, green, blue));
+		setScanColor(new Color(red, green, blue));
 	}
 }

@@ -1,4 +1,4 @@
-package marco.util;
+package marco.common;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
@@ -126,10 +126,10 @@ public class Util {
 	}
 
 	/**
-	 * Usado para não bater na parede do campo de batalha, essa função projeta um
+	 * Usado para ober um ângulo em que o robo não bata na parede do campo de batalha, essa função projeta um
 	 * vetor do centro do robo com um tamnho X e um certo ângulo, usando a função
 	 * <b>poject</b> Verifica se o final do vetor ainda está dentro do campo de
-	 * batalha, caso não esteja vai incrementando o ângulo até que fique.
+	 * batalha com um certo offset, caso não esteja vai incrementando o ângulo até que fique.
 	 * 
 	 * @param botLocation Localização atual do seu robo.
 	 * @param angle       Ângulo inicial que seu robo está.
@@ -146,6 +146,19 @@ public class Util {
 		return angle;
 	}
 
+	/**
+	 * Previsão do robô no futuro até 500 ticks a frente. esse método faz um previsão de um movimento não linear então é possivel que o robo faça curvas.
+	 * Usado para obter o aonde nosso robô estará e se formos a uma direção esquerda ou direita. 
+	 * 
+	 * @param bot
+	 * um AdvancedRobot pode ser o seu ou do inimigo.
+	 * @param surfWave
+	 * Uma Wave que foi gerada ao atirar, pode ser sua ou do inimigo.  
+	 * @param direction
+	 * Uma direção a seguir 1 = direita, -1 esquerda.
+	 * @return
+	 * A posição em um futuro até 500 ticks em que o robo não é atingido pelo tiro que gerou a Wave.
+	 */
 	public static Point2D.Double predictPosition(AdvancedRobot bot, Wave surfWave, int direction) {
 		// CREDIT: mini sized predictor from Apollon, by rozu
 		// http://robowiki.net?Apollon
@@ -156,7 +169,6 @@ public class Util {
 
 		int counter = 0; // number of ticks in the future
 		boolean intercepted = false;
-
 		do {
 			moveAngle = wallSmoothing(predictedPosition,
 					absoluteBearing(surfWave.getFireLocation(), predictedPosition) + (direction * (Math.PI / 2)),
@@ -167,30 +179,23 @@ public class Util {
 				moveAngle += Math.PI;
 				moveDir = -1;
 			}
-
 			moveAngle = Utils.normalRelativeAngle(moveAngle);
-
 			// maxTurning is built in like this, you can't turn more then this in one tick
 			maxTurning = Math.PI / 720d * (40d - 3d * Math.abs(predictedVelocity));
 			predictedHeading = Utils.normalRelativeAngle(predictedHeading + clamp(-maxTurning, moveAngle, maxTurning));
-
 			// this one is nice ;). if predictedVelocity and moveDir have
 			// different signs you want to breack down
 			// otherwise you want to accelerate (look at the factor "2")
 			predictedVelocity += (predictedVelocity * moveDir < 0 ? 2 * moveDir : moveDir);
 			predictedVelocity = clamp(-8, predictedVelocity, 8);
-
 			// calculate the new predicted position
 			predictedPosition = project(predictedPosition, predictedHeading, predictedVelocity);
-
 			counter++;
-
 			if (predictedPosition.distance(surfWave.getFireLocation()) < surfWave.getDistanceTraveled()
 					+ (counter * surfWave.getBulletVelocity()) + surfWave.getBulletVelocity()) {
 				intercepted = true;
 			}
 		} while (!intercepted && counter < 500);
-
 		return predictedPosition;
 	}
 
@@ -271,17 +276,7 @@ public class Util {
 		return myRobot.getY() + event.getDistance() * Math.cos(absBearing);
 	}
 
-	/**
-	 * Roda o radar para tentar manter o robô escaneado sempre no range do radar.
-	 * 
-	 * @param event
-	 * @param myRobot
-	 */
-	public static void trackEnemyWithRadar(ScannedRobotEvent event, AdvancedRobot myRobot) {
-		double absBearing = absoluteBearingRadians(event, myRobot);
-		double radarHeading = myRobot.getRadarHeadingRadians();
-		myRobot.setTurnRadarRightRadians(Utils.normalRelativeAngle(absBearing - radarHeading) * 2);
-	}
+
 
 	/**
 	 * Checa se a distância percorrida pela bala na simulação é maior que a

@@ -3,10 +3,9 @@ package marco.monitoring;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
-import marco.util.Util;
+import marco.common.Util;
 import robocode.AdvancedRobot;
 import robocode.util.Utils;
-import marco.monitoring.Wave;
 
 public class WaveManager {
 	public static WaveManager SINGLETON = new WaveManager();
@@ -14,9 +13,19 @@ public class WaveManager {
 	public ArrayList<Wave> myWaves;
 	public static int BINS = 67;
 	public static double surfStats[] = new double[BINS];
+	private int nOfWaveSurverd = 0;
+
+
 
 	public WaveManager() {
 		this.enemyWaves = new ArrayList<>();
+	}
+	public int getnOfWaveSurverd() {
+		return nOfWaveSurverd;
+	}
+
+	public void setnOfWaveSurverd(int nOfWaveSurverd) {
+		this.nOfWaveSurverd = nOfWaveSurverd;
 	}
 
 	/**
@@ -35,6 +44,7 @@ public class WaveManager {
 			ew.setDistanceTraveled(new_distance);
 			if (ew.getDistanceTraveled() > myLocation.distance(ew.getFireLocation()) + 50) {
 				enemyWaves.remove(x);
+				nOfWaveSurverd++;
 				x--;
 			}
 		}
@@ -83,20 +93,19 @@ public class WaveManager {
 	}
 
 	/**
-	 * 
+	 * Incrementa  o valor do BIN em que fomos atigindos exponencialmente decrescente. para o BIN em que fomos atigindos 1 para os dois laterais a esse 0.5 e assim com os restantes.
 	 * @param ew
 	 * @param targetLocation
 	 */
 	public void logHit(Wave ew, Point2D.Double targetLocation) {
 		int index = getFactorIndex(ew, targetLocation);
 		for (int x = 0; x < BINS; x++) {
-	
 			surfStats[x] += 1.0 / (Math.pow(index - x, 2) + 1);
 		}
 	}
+
 	public double checkDanger(Wave surfWave, int direction, AdvancedRobot bot) {
 		int index = getFactorIndex(surfWave, Util.predictPosition(bot, surfWave, direction));
-		System.out.println("index " + index);
 		return surfStats[index];
 	}
 
